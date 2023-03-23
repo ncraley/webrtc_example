@@ -1,3 +1,5 @@
+let isMagic;
+
 function clickofferpasted() {
   console.log('clickremoteoffer');
   document.getElementById('buttonofferpasted').disabled = true;
@@ -5,9 +7,15 @@ function clickofferpasted() {
   peerConnection.ondatachannel = handledatachannel;
   textelement = document.getElementById('textoffer');
   textelement.readOnly = true;
-  offer = JSON.parse(decodeZWSP(textelement.value.substring(5, textelement.value.length - 2)));
+  isMagic = textelement.value.includes('magic');
+  offer = JSON.parse(
+    isMagic ?
+    (decodeZWSP(textelement.value.substring(5, textelement.value.length - 2)))
+    : textelement.value
+  );
+  console.log(offer);
   setRemotePromise = peerConnection.setRemoteDescription(offer);
-  setRemotePromise.then(setRemoteDone, setRemoteFailed);
+  setRemotePromise.then(isMagic? setRemoteDoneMagic : setRemoteDone, setRemoteFailed);
 }
 
 function setRemoteDone() {
@@ -16,12 +24,25 @@ function setRemoteDone() {
   createAnswerPromise.then(createAnswerDone, createAnswerFailed);
 }
 
+function setRemoteDoneMagic() {
+  console.log('setRemoteDone');
+  createAnswerPromise = peerConnection.createAnswer();
+  createAnswerPromise.then(createAnswerDoneMagic, createAnswerFailed);
+}
+
 function setRemoteFailed(reason) {
   console.log('setRemoteFailed');
   console.log(reason);
 }
 
 function createAnswerDone(answer) {
+  console.log('createAnswerDone');
+  setLocalPromise = peerConnection.setLocalDescription(answer);
+  setLocalPromise.then(setLocalDone, setLocalFailed);
+  document.getElementById('spananswer').classList.toggle('invisible');
+}
+
+function createAnswerDoneMagic(answer) {
   console.log('createAnswerDone');
   setLocalPromise = peerConnection.setLocalDescription(answer);
   setLocalPromise.then(setLocalDone, setLocalFailed);
@@ -46,7 +67,7 @@ function lasticecandidate() {
   console.log('lasticecandidate');
   textelement = document.getElementById('textanswer');
   answer = peerConnection.localDescription
-  textelement.value = 'magic'+ encodeZWSP(JSON.stringify(answer)) + 'Id';
+  textelement.value = isMagic ? ('magic'+ encodeZWSP(JSON.stringify(answer)) + 'Id') : JSON.stringify(answer);
 }
 
 function handledatachannel(event) {
